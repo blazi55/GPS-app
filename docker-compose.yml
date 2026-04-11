@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: docker.io/mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gps_db
+    ports:
+      - "3306:3306"
+
+  rabbitmq:
+    image: docker.io/rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  app:
+    image: docker.io/eclipse-temurin:17-jdk
+    container_name: spring_app
+    depends_on:
+      - mysql
+      - rabbitmq
+    volumes:
+      - ./target//gps-0.0.1-SNAPSHOT.jar:/app.jar:Z
+    command: ["java", "-jar", "/app.jar"]
+    ports:
+      - "8080:8080"
