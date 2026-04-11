@@ -33,7 +33,7 @@ public class DeviceController {
 		return ResponseEntity.ok(deviceService.getDevice(id));
 	}
 
-	@GetMapping
+	@GetMapping("get/all")
 	public List<DeviceDto> getAll() {
 		return deviceService.getAllDevices();
 	}
