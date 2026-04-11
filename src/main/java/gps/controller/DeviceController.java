@@ -23,8 +23,9 @@ public class DeviceController {
 	private final DeviceService deviceService;
 
 	@PostMapping("/send")
-	public void sendDevice(@RequestBody DeviceDto dto) {
-		producer.send(dto);
+	public void sendDevice(@RequestBody SendDeviceDto dto) {
+		final DeviceDto deviceDto = deviceService.mapSendToDto(dto);
+		producer.send(deviceDto);
 	}
 
 

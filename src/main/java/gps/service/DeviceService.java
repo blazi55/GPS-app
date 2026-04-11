@@ -1,5 +1,6 @@
 package gps.service;
 
+import gps.controller.SendDeviceDto;
 import gps.dto.DeviceDto;
 import gps.entity.Device;
 import gps.repository.DeviceRepository;
@@ -52,6 +53,13 @@ public class DeviceService {
 		dto.setId(device.getId());
 		dto.setName(device.getName());
 		dto.setExternalId(device.getExternalId());
+		return dto;
+	}
+
+	public DeviceDto mapSendToDto(final SendDeviceDto sendDeviceDto) {
+		final DeviceDto dto = new DeviceDto();
+		dto.setName(sendDeviceDto.getName());
+		dto.setExternalId(sendDeviceDto.getExternalId());
 		return dto;
 	}
 }
