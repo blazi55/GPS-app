@@ -3,6 +3,7 @@ package gps.service;
 import gps.dto.DeviceDto;
 import gps.dto.LocationDto;
 import gps.entity.Device;
+import gps.enums.DeviceType;
 import gps.repository.DeviceRepository;
 import gps.repository.LocationRepository;
 import org.junit.jupiter.api.Test;
@@ -33,17 +34,17 @@ public class GpsIntegrationTest {
 
 	@Test
 	void shouldHandleFullFlow_deviceAndLocation() {
-		// given
 		DeviceDto deviceDto = new DeviceDto();
 		deviceDto.setName("Device A");
 		deviceDto.setExternalId("ext-123");
+		deviceDto.setDeviceType(DeviceType.PHONE);
 
 		deviceService.handleIncomingDevice(deviceDto);
 
 		Device device = deviceRepository.findByExternalId("ext-123").orElseThrow();
 		assertNotNull(device.getId());
+		assertEquals(DeviceType.PHONE, device.getDeviceType());
 
-		// when
 		LocationDto locationDto = new LocationDto();
 		locationDto.setDeviceExternalId("ext-123");
 		locationDto.setLatitude(50.0);
@@ -52,12 +53,10 @@ public class GpsIntegrationTest {
 
 		locationService.handleIncomingLocation(locationDto);
 
-		// then
 		var result = locationService.getLatest("ext-123");
 		assertEquals("ext-123", result.getDeviceExternalId());
 		assertEquals(50.0, result.getLatitude());
 		assertEquals(20.0, result.getLongitude());
 		assertEquals(1, locationRepository.count());
 	}
-
 }

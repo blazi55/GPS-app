@@ -3,6 +3,7 @@ package gps.service;
 import gps.controller.SendDeviceDto;
 import gps.dto.DeviceDto;
 import gps.entity.Device;
+import gps.enums.DeviceType;
 import gps.repository.DeviceRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,11 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class DeviceServiceTest {
@@ -34,6 +32,7 @@ class DeviceServiceTest {
 		device.setId(1L);
 		device.setName("Device A");
 		device.setExternalId("ext-123");
+		device.setDeviceType(DeviceType.PHONE);
 
 		when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
 
@@ -42,6 +41,7 @@ class DeviceServiceTest {
 		assertEquals(1L, result.getId());
 		assertEquals("Device A", result.getName());
 		assertEquals("ext-123", result.getExternalId());
+		assertEquals(DeviceType.PHONE, result.getDeviceType());
 	}
 
 	@Test
@@ -51,12 +51,12 @@ class DeviceServiceTest {
 		assertThrows(RuntimeException.class, () -> deviceService.getDevice(1L));
 	}
 
-
 	@Test
 	void shouldSaveNewDevice_whenNotExists() {
 		DeviceDto dto = new DeviceDto();
 		dto.setName("Device A");
 		dto.setExternalId("ext-123");
+		dto.setDeviceType(DeviceType.PHONE);
 
 		when(deviceRepository.findByExternalId("ext-123"))
 				.thenReturn(Optional.empty());
@@ -71,10 +71,12 @@ class DeviceServiceTest {
 		Device existing = new Device();
 		existing.setId(1L);
 		existing.setExternalId("ext-123");
+		existing.setDeviceType(DeviceType.CAR);
 
 		DeviceDto dto = new DeviceDto();
 		dto.setName("Updated Name");
 		dto.setExternalId("ext-123");
+		dto.setDeviceType(DeviceType.PHONE);
 
 		when(deviceRepository.findByExternalId("ext-123"))
 				.thenReturn(Optional.of(existing));
@@ -82,6 +84,7 @@ class DeviceServiceTest {
 		deviceService.handleIncomingDevice(dto);
 
 		assertEquals("Updated Name", existing.getName());
+		assertEquals(DeviceType.PHONE, existing.getDeviceType());
 		verify(deviceRepository).save(existing);
 	}
 
@@ -89,6 +92,7 @@ class DeviceServiceTest {
 	void shouldThrowException_whenExternalIdIsNull() {
 		DeviceDto dto = new DeviceDto();
 		dto.setName("Device");
+		dto.setDeviceType(DeviceType.PHONE);
 
 		assertThrows(IllegalArgumentException.class,
 				() -> deviceService.handleIncomingDevice(dto));
@@ -99,6 +103,7 @@ class DeviceServiceTest {
 		DeviceDto dto = new DeviceDto();
 		dto.setExternalId("ext-123");
 		dto.setName(" ");
+		dto.setDeviceType(DeviceType.PHONE);
 
 		assertThrows(IllegalArgumentException.class,
 				() -> deviceService.handleIncomingDevice(dto));
@@ -110,6 +115,7 @@ class DeviceServiceTest {
 		device.setId(1L);
 		device.setName("Device A");
 		device.setExternalId("ext-123");
+		device.setDeviceType(DeviceType.DRONE);
 
 		when(deviceRepository.findAll()).thenReturn(List.of(device));
 
@@ -117,6 +123,7 @@ class DeviceServiceTest {
 
 		assertEquals(1, result.size());
 		assertEquals("Device A", result.get(0).getName());
+		assertEquals(DeviceType.DRONE, result.get(0).getDeviceType());
 	}
 
 	@Test
@@ -124,10 +131,12 @@ class DeviceServiceTest {
 		SendDeviceDto send = new SendDeviceDto();
 		send.setName("Device A");
 		send.setExternalId("ext-123");
+		send.setDeviceType(DeviceType.TABLET);
 
 		DeviceDto result = deviceService.mapSendToDto(send);
 
 		assertEquals("Device A", result.getName());
 		assertEquals("ext-123", result.getExternalId());
+		assertEquals(DeviceType.TABLET, result.getDeviceType());
 	}
 }

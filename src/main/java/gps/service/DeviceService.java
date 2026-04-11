@@ -37,6 +37,7 @@ public class DeviceService {
 
 		device.setExternalId(dto.getExternalId());
 		device.setName(dto.getName());
+		device.setDeviceType(dto.getDeviceType());
 
 		deviceRepository.save(device);
 	}
@@ -53,6 +54,7 @@ public class DeviceService {
 		dto.setId(device.getId());
 		dto.setName(device.getName());
 		dto.setExternalId(device.getExternalId());
+		dto.setDeviceType(device.getDeviceType());
 		return dto;
 	}
 
@@ -60,6 +62,7 @@ public class DeviceService {
 		final DeviceDto dto = new DeviceDto();
 		dto.setName(sendDeviceDto.getName());
 		dto.setExternalId(sendDeviceDto.getExternalId());
+		dto.setDeviceType(sendDeviceDto.getDeviceType());
 		return dto;
 	}
 }
