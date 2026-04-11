@@ -51,6 +51,7 @@ public class DeviceService {
 		final DeviceDto dto = new DeviceDto();
 		dto.setId(device.getId());
 		dto.setName(device.getName());
+		dto.setExternalId(device.getExternalId());
 		return dto;
 	}
 }

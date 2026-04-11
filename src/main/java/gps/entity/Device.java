@@ -18,7 +18,6 @@ public class Device {
 	private Long id;
 
 	private String name;
-	private String type;
 
 	@Column(unique = true)
 	private String externalId;

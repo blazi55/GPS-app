@@ -12,7 +12,7 @@ public class DeviceProducer {
 
 	private final RabbitTemplate rabbitTemplate;
 
-	public void send(DeviceDto deviceDto) {
+	public void send(final DeviceDto deviceDto) {
 		rabbitTemplate.convertAndSend(
 				RabbitConfig.EXCHANGE,
 				RabbitConfig.DEVICE_ROUTING_KEY,

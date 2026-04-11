@@ -1,5 +1,10 @@
 package gps.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -46,5 +51,13 @@ public class RabbitConfig {
 				.bind(deviceQueue)
 				.to(exchange)
 				.with(DEVICE_ROUTING_KEY);
+	}
+
+	@Bean
+	public Jackson2JsonMessageConverter messageConverter() {
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.registerModule(new JavaTimeModule()); // 🔥 TO!
+
+		return new Jackson2JsonMessageConverter(mapper);
 	}
 }
