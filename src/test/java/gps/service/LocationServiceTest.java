@@ -3,6 +3,7 @@ package gps.service;
 import gps.dto.LocationDto;
 import gps.entity.Device;
 import gps.entity.Location;
+import gps.exception.NotFoundException;
 import gps.repository.DeviceRepository;
 import gps.repository.LocationRepository;
 import org.junit.jupiter.api.Test;
@@ -17,11 +18,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class LocationServiceTest {
@@ -91,6 +89,15 @@ class LocationServiceTest {
 	}
 
 	@Test
+	void shouldThrowException_whenLatitudeTooLow() {
+		LocationDto dto = new LocationDto();
+		dto.setLatitude(-100);
+
+		assertThrows(AmqpRejectAndDontRequeueException.class,
+				() -> locationService.handleIncomingLocation(dto));
+	}
+
+	@Test
 	void shouldThrowException_whenLongitudeInvalid() {
 		LocationDto dto = new LocationDto();
 		dto.setLongitude(200);
@@ -100,8 +107,28 @@ class LocationServiceTest {
 	}
 
 	@Test
+	void shouldThrowException_whenLongitudeTooLow() {
+		LocationDto dto = new LocationDto();
+		dto.setLongitude(-200);
+
+		assertThrows(AmqpRejectAndDontRequeueException.class,
+				() -> locationService.handleIncomingLocation(dto));
+	}
+
+	@Test
 	void shouldThrowException_whenExternalIdMissing() {
 		LocationDto dto = new LocationDto();
+		dto.setLatitude(50);
+		dto.setLongitude(20);
+
+		assertThrows(AmqpRejectAndDontRequeueException.class,
+				() -> locationService.handleIncomingLocation(dto));
+	}
+
+	@Test
+	void shouldThrowException_whenExternalIdBlank() {
+		LocationDto dto = new LocationDto();
+		dto.setDeviceExternalId(" ");
 		dto.setLatitude(50);
 		dto.setLongitude(20);
 
@@ -119,8 +146,26 @@ class LocationServiceTest {
 		when(deviceRepo.findByExternalId("ext-123"))
 				.thenReturn(Optional.empty());
 
-		assertThrows(RuntimeException.class,
+		assertThrows(AmqpRejectAndDontRequeueException.class,
 				() -> locationService.handleIncomingLocation(dto));
+	}
+
+	@Test
+	void shouldCallRepositoryOnce_whenSaving() {
+		Device device = new Device();
+		device.setExternalId("ext-123");
+
+		LocationDto dto = new LocationDto();
+		dto.setDeviceExternalId("ext-123");
+		dto.setLatitude(50);
+		dto.setLongitude(20);
+
+		when(deviceRepo.findByExternalId("ext-123"))
+				.thenReturn(Optional.of(device));
+
+		locationService.handleIncomingLocation(dto);
+
+		verify(locationRepo, times(1)).save(any(Location.class));
 	}
 
 	@Test
@@ -145,11 +190,35 @@ class LocationServiceTest {
 	}
 
 	@Test
+	void shouldMapAllFieldsCorrectly() {
+		Device device = new Device();
+		device.setExternalId("ext-123");
+
+		Instant now = Instant.now();
+
+		Location location = new Location();
+		location.setDevice(device);
+		location.setLatitude(10);
+		location.setLongitude(15);
+		location.setTimestamp(now);
+
+		when(locationRepo.findLatestWithDevice("ext-123"))
+				.thenReturn(List.of(location));
+
+		LocationDto result = locationService.getLatest("ext-123");
+
+		assertEquals("ext-123", result.getDeviceExternalId());
+		assertEquals(10, result.getLatitude());
+		assertEquals(15, result.getLongitude());
+		assertEquals(now, result.getTimestamp());
+	}
+
+	@Test
 	void shouldThrowException_whenNoLocationFound() {
 		when(locationRepo.findLatestWithDevice("ext-123"))
 				.thenReturn(List.of());
 
-		assertThrows(RuntimeException.class,
+		assertThrows(NotFoundException.class,
 				() -> locationService.getLatest("ext-123"));
 	}
 }

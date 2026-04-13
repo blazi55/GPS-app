@@ -4,9 +4,11 @@ import gps.controller.SendDeviceDto;
 import gps.dto.DeviceDto;
 import gps.entity.Device;
 import gps.enums.DeviceType;
+import gps.exception.NotFoundException;
 import gps.repository.DeviceRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -49,7 +51,12 @@ class DeviceServiceTest {
 	void shouldThrowException_whenDeviceNotFound() {
 		when(deviceRepository.findById(1L)).thenReturn(Optional.empty());
 
-		assertThrows(RuntimeException.class, () -> deviceService.getDevice(1L));
+		NotFoundException ex = assertThrows(
+				NotFoundException.class,
+				() -> deviceService.getDevice(1L)
+		);
+
+		assertTrue(ex.getMessage().contains("Device not found for id: 1"));
 	}
 
 	@Test
@@ -64,7 +71,13 @@ class DeviceServiceTest {
 
 		deviceService.handleIncomingDevice(dto);
 
-		verify(deviceRepository).save(any(Device.class));
+		ArgumentCaptor<Device> captor = ArgumentCaptor.forClass(Device.class);
+		verify(deviceRepository).save(captor.capture());
+
+		Device saved = captor.getValue();
+		assertEquals("ext-123", saved.getExternalId());
+		assertEquals("Device A", saved.getName());
+		assertEquals(DeviceType.PHONE, saved.getDeviceType());
 	}
 
 	@Test
@@ -86,14 +99,42 @@ class DeviceServiceTest {
 
 		assertEquals("Updated Name", existing.getName());
 		assertEquals(DeviceType.PHONE, existing.getDeviceType());
+
 		verify(deviceRepository).save(existing);
+	}
+
+	@Test
+	void shouldNotCreateNewDevice_whenUpdating() {
+		Device existing = new Device();
+		existing.setId(1L);
+		existing.setExternalId("ext-123");
+
+		when(deviceRepository.findByExternalId("ext-123"))
+				.thenReturn(Optional.of(existing));
+
+		DeviceDto dto = new DeviceDto();
+		dto.setExternalId("ext-123");
+		dto.setName("Updated");
+
+		deviceService.handleIncomingDevice(dto);
+
+		verify(deviceRepository, times(1)).save(existing);
 	}
 
 	@Test
 	void shouldThrowException_whenExternalIdIsNull() {
 		DeviceDto dto = new DeviceDto();
 		dto.setName("Device");
-		dto.setDeviceType(DeviceType.PHONE);
+
+		assertThrows(AmqpRejectAndDontRequeueException.class,
+				() -> deviceService.handleIncomingDevice(dto));
+	}
+
+	@Test
+	void shouldThrowException_whenExternalIdIsBlank() {
+		DeviceDto dto = new DeviceDto();
+		dto.setExternalId(" ");
+		dto.setName("Device");
 
 		assertThrows(AmqpRejectAndDontRequeueException.class,
 				() -> deviceService.handleIncomingDevice(dto));
@@ -104,10 +145,32 @@ class DeviceServiceTest {
 		DeviceDto dto = new DeviceDto();
 		dto.setExternalId("ext-123");
 		dto.setName(" ");
-		dto.setDeviceType(DeviceType.PHONE);
 
 		assertThrows(AmqpRejectAndDontRequeueException.class,
 				() -> deviceService.handleIncomingDevice(dto));
+	}
+
+	@Test
+	void shouldAllowNullDeviceType() {
+		DeviceDto dto = new DeviceDto();
+		dto.setExternalId("ext-123");
+		dto.setName("Device A");
+
+		when(deviceRepository.findByExternalId("ext-123"))
+				.thenReturn(Optional.empty());
+
+		deviceService.handleIncomingDevice(dto);
+
+		verify(deviceRepository).save(any(Device.class));
+	}
+
+	@Test
+	void shouldReturnEmptyList_whenNoDevices() {
+		when(deviceRepository.findAll()).thenReturn(List.of());
+
+		List<DeviceDto> result = deviceService.getAllDevices();
+
+		assertTrue(result.isEmpty());
 	}
 
 	@Test
@@ -139,5 +202,18 @@ class DeviceServiceTest {
 		assertEquals("Device A", result.getName());
 		assertEquals("ext-123", result.getExternalId());
 		assertEquals(DeviceType.TABLET, result.getDeviceType());
+	}
+
+	@Test
+	void shouldMapSendDeviceDto_whenDeviceTypeNull() {
+		SendDeviceDto send = new SendDeviceDto();
+		send.setName("Device A");
+		send.setExternalId("ext-123");
+
+		DeviceDto result = deviceService.mapSendToDto(send);
+
+		assertEquals("Device A", result.getName());
+		assertEquals("ext-123", result.getExternalId());
+		assertNull(result.getDeviceType());
 	}
 }
