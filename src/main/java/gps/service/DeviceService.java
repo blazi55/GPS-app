@@ -3,6 +3,7 @@ package gps.service;
 import gps.controller.SendDeviceDto;
 import gps.dto.DeviceDto;
 import gps.entity.Device;
+import gps.exception.NotFoundException;
 import gps.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
@@ -18,9 +19,9 @@ public class DeviceService {
 	private final DeviceRepository deviceRepository;
 
 	public DeviceDto getDevice(final Long id) {
-		final Device device = deviceRepository.findById(id)
-				.orElseThrow(() -> new RuntimeException("Device not found"));
-		return mapToDto(device);
+		return deviceRepository.findById(id)
+				.map(this::mapToDto)
+				.orElseThrow(() -> new NotFoundException("Device not found for id: " + id));
 	}
 
 	@Transactional

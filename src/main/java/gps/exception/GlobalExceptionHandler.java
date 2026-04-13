@@ -62,8 +62,8 @@ public class GlobalExceptionHandler {
 				));
 	}
 
-	@ExceptionHandler(LocationNotFoundException.class)
-	public ResponseEntity<ErrorResponse> handleNotFound(LocationNotFoundException ex) {
+	@ExceptionHandler(NotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex) {
 		return ResponseEntity
 				.status(HttpStatus.NOT_FOUND)
 				.body(new ErrorResponse(
