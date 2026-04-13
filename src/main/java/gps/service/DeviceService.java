@@ -5,6 +5,7 @@ import gps.dto.DeviceDto;
 import gps.entity.Device;
 import gps.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,11 +26,11 @@ public class DeviceService {
 	@Transactional
 	public void handleIncomingDevice(final DeviceDto dto) {
 		if (dto.getExternalId() == null || dto.getExternalId().isBlank()) {
-			throw new IllegalArgumentException("ExternalId is required");
+			throw new AmqpRejectAndDontRequeueException("ExternalId is required");
 		}
 
 		if (dto.getName() == null || dto.getName().isBlank()) {
-			throw new IllegalArgumentException("Device name cannot be empty");
+			throw new AmqpRejectAndDontRequeueException("Device name cannot be empty");
 		}
 		final Device device = deviceRepository
 				.findByExternalId(dto.getExternalId())

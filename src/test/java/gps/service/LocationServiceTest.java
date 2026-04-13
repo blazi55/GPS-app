@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 
 import java.time.Instant;
 import java.util.List;
@@ -85,7 +86,7 @@ class LocationServiceTest {
 		LocationDto dto = new LocationDto();
 		dto.setLatitude(100);
 
-		assertThrows(IllegalArgumentException.class,
+		assertThrows(AmqpRejectAndDontRequeueException.class,
 				() -> locationService.handleIncomingLocation(dto));
 	}
 
@@ -94,7 +95,7 @@ class LocationServiceTest {
 		LocationDto dto = new LocationDto();
 		dto.setLongitude(200);
 
-		assertThrows(IllegalArgumentException.class,
+		assertThrows(AmqpRejectAndDontRequeueException.class,
 				() -> locationService.handleIncomingLocation(dto));
 	}
 
@@ -104,7 +105,7 @@ class LocationServiceTest {
 		dto.setLatitude(50);
 		dto.setLongitude(20);
 
-		assertThrows(IllegalArgumentException.class,
+		assertThrows(AmqpRejectAndDontRequeueException.class,
 				() -> locationService.handleIncomingLocation(dto));
 	}
 

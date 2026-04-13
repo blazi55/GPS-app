@@ -7,6 +7,7 @@ import gps.repository.DeviceRepository;
 import gps.repository.LocationRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -21,20 +22,20 @@ public class LocationService {
 	@Transactional
 	public void handleIncomingLocation(final LocationDto dto) {
 		if (dto.getLatitude() < -90 || dto.getLatitude() > 90) {
-			throw new IllegalArgumentException("Invalid latitude");
+			throw new AmqpRejectAndDontRequeueException("Invalid latitude");
 		}
 
 		if (dto.getLongitude() < -180 || dto.getLongitude() > 180) {
-			throw new IllegalArgumentException("Invalid longitude");
+			throw new AmqpRejectAndDontRequeueException("Invalid longitude");
 		}
 
 		if (dto.getDeviceExternalId() == null || dto.getDeviceExternalId().isBlank()) {
-			throw new IllegalArgumentException("DeviceExternalId is required");
+			throw new AmqpRejectAndDontRequeueException("DeviceExternalId is required");
 		}
 
 		final Device device = deviceRepo
 				.findByExternalId(dto.getDeviceExternalId())
-				.orElseThrow(() -> new RuntimeException(
+				.orElseThrow(() -> new AmqpRejectAndDontRequeueException(
 						"Device not found for externalId: " + dto.getDeviceExternalId()
 				));
 
