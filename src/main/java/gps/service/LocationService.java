@@ -3,12 +3,15 @@ package gps.service;
 import gps.dto.LocationDto;
 import gps.entity.Device;
 import gps.entity.Location;
+import gps.exception.LocationNotFoundException;
 import gps.repository.DeviceRepository;
 import gps.repository.LocationRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 
@@ -55,7 +58,7 @@ public class LocationService {
 				.stream()
 				.findFirst()
 				.map(this::mapToDto)
-				.orElseThrow();
+				.orElseThrow(() -> new LocationNotFoundException(externalId));
 	}
 
 	private LocationDto mapToDto(final Location location) {

@@ -61,4 +61,15 @@ public class GlobalExceptionHandler {
 						"Something went wrong"
 				));
 	}
+
+	@ExceptionHandler(LocationNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNotFound(LocationNotFoundException ex) {
+		return ResponseEntity
+				.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse(
+						Instant.now(),
+						HttpStatus.NOT_FOUND.value(),
+						ex.getMessage()
+				));
+	}
 }
