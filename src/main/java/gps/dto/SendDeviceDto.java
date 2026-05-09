@@ -1,4 +1,4 @@
-package gps.controller;
+package gps.dto;
 
 import gps.enums.DeviceType;
 import lombok.AllArgsConstructor;

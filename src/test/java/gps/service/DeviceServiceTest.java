@@ -1,6 +1,6 @@
 package gps.service;
 
-import gps.controller.SendDeviceDto;
+import gps.dto.SendDeviceDto;
 import gps.dto.DeviceDto;
 import gps.entity.Device;
 import gps.enums.DeviceType;

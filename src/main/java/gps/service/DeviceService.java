@@ -1,17 +1,19 @@
 package gps.service;
 
-import gps.controller.SendDeviceDto;
+import gps.dto.SendDeviceDto;
 import gps.dto.DeviceDto;
 import gps.entity.Device;
 import gps.exception.NotFoundException;
 import gps.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeviceService {
@@ -21,18 +23,24 @@ public class DeviceService {
 	public DeviceDto getDevice(final Long id) {
 		return deviceRepository.findById(id)
 				.map(this::mapToDto)
-				.orElseThrow(() -> new NotFoundException("Device not found for id: " + id));
+				.orElseThrow(() -> {
+					log.error("Device not found for id: {}", id);
+					throw new NotFoundException("Device not found for id: " + id);
+				});
 	}
 
 	@Transactional
 	public void handleIncomingDevice(final DeviceDto dto) {
 		if (dto.getExternalId() == null || dto.getExternalId().isBlank()) {
+			log.error("ExternalId is required");
 			throw new AmqpRejectAndDontRequeueException("ExternalId is required");
 		}
 
 		if (dto.getName() == null || dto.getName().isBlank()) {
+			log.error("Device name cannot be empty");
 			throw new AmqpRejectAndDontRequeueException("Device name cannot be empty");
 		}
+
 		final Device device = deviceRepository
 				.findByExternalId(dto.getExternalId())
 				.orElseGet(Device::new);

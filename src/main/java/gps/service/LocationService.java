@@ -8,11 +8,13 @@ import gps.repository.DeviceRepository;
 import gps.repository.LocationRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LocationService {
@@ -23,22 +25,28 @@ public class LocationService {
 	@Transactional
 	public void handleIncomingLocation(final LocationDto dto) {
 		if (dto.getLatitude() < -90 || dto.getLatitude() > 90) {
+			log.error("Invalid latitude");
 			throw new AmqpRejectAndDontRequeueException("Invalid latitude");
 		}
 
 		if (dto.getLongitude() < -180 || dto.getLongitude() > 180) {
+			log.error("Invalid longitude");
 			throw new AmqpRejectAndDontRequeueException("Invalid longitude");
 		}
 
 		if (dto.getDeviceExternalId() == null || dto.getDeviceExternalId().isBlank()) {
+			log.error("DeviceExternalId is required");
 			throw new AmqpRejectAndDontRequeueException("DeviceExternalId is required");
 		}
 
 		final Device device = deviceRepo
 				.findByExternalId(dto.getDeviceExternalId())
-				.orElseThrow(() -> new AmqpRejectAndDontRequeueException(
-						"Device not found for externalId: " + dto.getDeviceExternalId()
-				));
+				.orElseThrow(() -> {
+					log.error("Device not found for externalId: {}", dto.getDeviceExternalId());
+					throw new AmqpRejectAndDontRequeueException(
+							"Device not found for externalId: " + dto.getDeviceExternalId()
+					);
+				});
 
 		final Location loc = new Location();
 		loc.setDevice(device);
