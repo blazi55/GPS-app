@@ -1,4 +1,5 @@
 import type { Device } from '../types/gps'
+import { useI18n } from '../i18n/I18nProvider'
 
 interface DeviceListProps {
   devices: Device[]
@@ -13,8 +14,10 @@ export function DeviceList({
   latestByDevice,
   onSelect,
 }: DeviceListProps) {
+  const { t, locale } = useI18n()
+
   if (devices.length === 0) {
-    return <p className="muted">Brak urządzeń — dodaj pierwsze poniżej.</p>
+    return <p className="muted">{t.devices.empty}</p>
   }
 
   return (
@@ -35,7 +38,9 @@ export function DeviceList({
               </span>
               {latestByDevice[device.externalId] && (
                 <span className="device-item__time muted">
-                  {new Date(latestByDevice[device.externalId]).toLocaleString()}
+                  {new Date(latestByDevice[device.externalId]).toLocaleString(
+                    locale,
+                  )}
                 </span>
               )}
             </button>

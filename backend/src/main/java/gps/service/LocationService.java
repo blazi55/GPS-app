@@ -5,6 +5,8 @@ import gps.dto.TrackSummaryDto;
 import gps.entity.Device;
 import gps.entity.Location;
 import gps.exception.NotFoundException;
+import gps.i18n.MessageKeys;
+import gps.i18n.MessageService;
 import gps.repository.DeviceRepository;
 import gps.repository.LocationRepository;
 import gps.util.GeoUtils;
@@ -25,22 +27,29 @@ public class LocationService {
 
 	private final DeviceRepository deviceRepo;
 	private final LocationRepository locationRepo;
+	private final MessageService messages;
 
 	@Transactional
 	public void handleIncomingLocation(final LocationDto dto) {
 		if (!GeoUtils.isValidLatitude(dto.getLatitude())) {
 			log.error("Invalid latitude: {}", dto.getLatitude());
-			throw new AmqpRejectAndDontRequeueException("Invalid latitude");
+			throw new AmqpRejectAndDontRequeueException(
+					messages.get(MessageKeys.LOCATION_LATITUDE_INVALID)
+			);
 		}
 
 		if (!GeoUtils.isValidLongitude(dto.getLongitude())) {
 			log.error("Invalid longitude: {}", dto.getLongitude());
-			throw new AmqpRejectAndDontRequeueException("Invalid longitude");
+			throw new AmqpRejectAndDontRequeueException(
+					messages.get(MessageKeys.LOCATION_LONGITUDE_INVALID)
+			);
 		}
 
 		if (dto.getDeviceExternalId() == null || dto.getDeviceExternalId().isBlank()) {
 			log.error("DeviceExternalId is required");
-			throw new AmqpRejectAndDontRequeueException("DeviceExternalId is required");
+			throw new AmqpRejectAndDontRequeueException(
+					messages.get(MessageKeys.LOCATION_DEVICE_EXTERNAL_ID_REQUIRED)
+			);
 		}
 
 		final Device device = deviceRepo
@@ -48,7 +57,7 @@ public class LocationService {
 				.orElseThrow(() -> {
 					log.error("Device not found for externalId: {}", dto.getDeviceExternalId());
 					return new AmqpRejectAndDontRequeueException(
-							"Device not found for externalId: " + dto.getDeviceExternalId()
+							messages.get(MessageKeys.LOCATION_DEVICE_NOT_FOUND, dto.getDeviceExternalId())
 					);
 				});
 
@@ -67,7 +76,7 @@ public class LocationService {
 		return locationRepo.findLatestWithDevice(externalId)
 				.map(this::mapToDto)
 				.orElseThrow(() -> new NotFoundException(
-						"No location found for device: " + externalId
+						messages.get(MessageKeys.LOCATION_NOT_FOUND, externalId)
 				));
 	}
 
@@ -75,7 +84,7 @@ public class LocationService {
 		ensureDeviceExists(externalId);
 
 		if (from != null && to != null && from.isAfter(to)) {
-			throw new IllegalArgumentException("'from' must be before or equal to 'to'");
+			throw new IllegalArgumentException(messages.get(MessageKeys.LOCATION_FROM_AFTER_TO));
 		}
 
 		return locationRepo.findHistory(externalId, from, to)
@@ -117,7 +126,7 @@ public class LocationService {
 	private void ensureDeviceExists(String externalId) {
 		deviceRepo.findByExternalId(externalId)
 				.orElseThrow(() -> new NotFoundException(
-						"Device not found for externalId: " + externalId
+						messages.get(MessageKeys.DEVICE_NOT_FOUND_EXTERNAL_ID, externalId)
 				));
 	}
 

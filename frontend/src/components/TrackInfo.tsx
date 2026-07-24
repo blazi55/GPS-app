@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nProvider'
 import type { TrackSummary } from '../types/gps'
 
 interface TrackInfoProps {
@@ -20,6 +21,8 @@ export function TrackInfo({
   onClearTrack,
   hasSelection,
 }: TrackInfoProps) {
+  const { t } = useI18n()
+
   return (
     <div className="track-info">
       <div className="track-info__actions">
@@ -29,11 +32,11 @@ export function TrackInfo({
           disabled={!hasSelection || loading}
           onClick={onLoadTrack}
         >
-          {loading ? 'Ładowanie…' : 'Pokaż trasę'}
+          {loading ? t.track.loading : t.track.show}
         </button>
         {track && (
           <button type="button" className="ghost" onClick={onClearTrack}>
-            Wyczyść
+            {t.track.clear}
           </button>
         )}
       </div>
@@ -41,11 +44,11 @@ export function TrackInfo({
       {track && (
         <dl className="stats">
           <div>
-            <dt>Punkty</dt>
+            <dt>{t.track.points}</dt>
             <dd className="mono">{track.pointCount}</dd>
           </div>
           <div>
-            <dt>Dystans</dt>
+            <dt>{t.track.distance}</dt>
             <dd className="mono">{formatDistance(track.totalDistanceMeters)}</dd>
           </div>
         </dl>

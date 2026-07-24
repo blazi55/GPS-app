@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useI18n } from '../i18n/I18nProvider'
 import { DEVICE_TYPES, type DeviceType, type SendDevice } from '../types/gps'
 
 interface DeviceFormProps {
@@ -7,6 +8,7 @@ interface DeviceFormProps {
 }
 
 export function DeviceForm({ onSubmit, busy }: DeviceFormProps) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [externalId, setExternalId] = useState('')
   const [deviceType, setDeviceType] = useState<DeviceType>('PHONE')
@@ -22,26 +24,26 @@ export function DeviceForm({ onSubmit, busy }: DeviceFormProps) {
   return (
     <form className="stack-form" onSubmit={handleSubmit}>
       <label>
-        Nazwa
+        {t.deviceForm.name}
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          placeholder="Flota-01"
+          placeholder={t.deviceForm.namePlaceholder}
         />
       </label>
       <label>
-        External ID
+        {t.deviceForm.externalId}
         <input
           value={externalId}
           onChange={(e) => setExternalId(e.target.value)}
           required
-          placeholder="car-01"
+          placeholder={t.deviceForm.externalIdPlaceholder}
           className="mono"
         />
       </label>
       <label>
-        Typ
+        {t.deviceForm.type}
         <select
           value={deviceType}
           onChange={(e) => setDeviceType(e.target.value as DeviceType)}
@@ -54,7 +56,7 @@ export function DeviceForm({ onSubmit, busy }: DeviceFormProps) {
         </select>
       </label>
       <button type="submit" disabled={busy}>
-        {busy ? 'Wysyłanie…' : 'Dodaj urządzenie'}
+        {busy ? t.deviceForm.submitting : t.deviceForm.submit}
       </button>
     </form>
   )

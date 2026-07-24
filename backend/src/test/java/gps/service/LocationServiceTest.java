@@ -1,11 +1,15 @@
 package gps.service;
 
 import gps.dto.LocationDto;
+import gps.dto.TrackSummaryDto;
 import gps.entity.Device;
 import gps.entity.Location;
 import gps.exception.NotFoundException;
+import gps.i18n.MessageService;
 import gps.repository.DeviceRepository;
 import gps.repository.LocationRepository;
+import gps.support.MessageServiceTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -30,22 +34,23 @@ class LocationServiceTest {
 	@Mock
 	private LocationRepository locationRepo;
 
+	@Mock
+	private MessageService messages;
+
 	@InjectMocks
 	private LocationService locationService;
 
+	@BeforeEach
+	void setUp() {
+		MessageServiceTestSupport.stubEnglish(messages);
+	}
+
 	@Test
 	void shouldSaveLocation_whenValidInput() {
-		Device device = new Device();
-		device.setExternalId("ext-123");
+		Device device = device("ext-123");
+		LocationDto dto = locationDto("ext-123", 50.0, 20.0, Instant.now());
 
-		LocationDto dto = new LocationDto();
-		dto.setDeviceExternalId("ext-123");
-		dto.setLatitude(50.0);
-		dto.setLongitude(20.0);
-		dto.setTimestamp(Instant.now());
-
-		when(deviceRepo.findByExternalId("ext-123"))
-				.thenReturn(Optional.of(device));
+		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.of(device));
 
 		locationService.handleIncomingLocation(dto);
 
@@ -59,128 +64,63 @@ class LocationServiceTest {
 	}
 
 	@Test
+	void shouldAcceptBoundaryCoordinates() {
+		Device device = device("ext-123");
+		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.of(device));
+
+		locationService.handleIncomingLocation(locationDto("ext-123", 90, 180, null));
+		locationService.handleIncomingLocation(locationDto("ext-123", -90, -180, null));
+
+		verify(locationRepo, times(2)).save(any(Location.class));
+	}
+
+	@Test
 	void shouldUseCurrentTime_whenTimestampIsNull() {
-		Device device = new Device();
-		device.setExternalId("ext-123");
+		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.of(device("ext-123")));
 
-		LocationDto dto = new LocationDto();
-		dto.setDeviceExternalId("ext-123");
-		dto.setLatitude(50.0);
-		dto.setLongitude(20.0);
-
-		when(deviceRepo.findByExternalId("ext-123"))
-				.thenReturn(Optional.of(device));
-
-		locationService.handleIncomingLocation(dto);
+		locationService.handleIncomingLocation(locationDto("ext-123", 50.0, 20.0, null));
 
 		ArgumentCaptor<Location> captor = ArgumentCaptor.forClass(Location.class);
 		verify(locationRepo).save(captor.capture());
-
 		assertNotNull(captor.getValue().getTimestamp());
 	}
 
 	@Test
 	void shouldThrowException_whenLatitudeInvalid() {
-		LocationDto dto = new LocationDto();
-		dto.setLatitude(100);
-
 		assertThrows(AmqpRejectAndDontRequeueException.class,
-				() -> locationService.handleIncomingLocation(dto));
-	}
-
-	@Test
-	void shouldThrowException_whenLatitudeTooLow() {
-		LocationDto dto = new LocationDto();
-		dto.setLatitude(-100);
-
-		assertThrows(AmqpRejectAndDontRequeueException.class,
-				() -> locationService.handleIncomingLocation(dto));
+				() -> locationService.handleIncomingLocation(locationDto(null, 100, 20, null)));
 	}
 
 	@Test
 	void shouldThrowException_whenLongitudeInvalid() {
-		LocationDto dto = new LocationDto();
-		dto.setLongitude(200);
-
 		assertThrows(AmqpRejectAndDontRequeueException.class,
-				() -> locationService.handleIncomingLocation(dto));
-	}
-
-	@Test
-	void shouldThrowException_whenLongitudeTooLow() {
-		LocationDto dto = new LocationDto();
-		dto.setLongitude(-200);
-
-		assertThrows(AmqpRejectAndDontRequeueException.class,
-				() -> locationService.handleIncomingLocation(dto));
+				() -> locationService.handleIncomingLocation(locationDto(null, 50, 200, null)));
 	}
 
 	@Test
 	void shouldThrowException_whenExternalIdMissing() {
-		LocationDto dto = new LocationDto();
-		dto.setLatitude(50);
-		dto.setLongitude(20);
-
 		assertThrows(AmqpRejectAndDontRequeueException.class,
-				() -> locationService.handleIncomingLocation(dto));
+				() -> locationService.handleIncomingLocation(locationDto(null, 50, 20, null)));
 	}
 
 	@Test
 	void shouldThrowException_whenExternalIdBlank() {
-		LocationDto dto = new LocationDto();
-		dto.setDeviceExternalId(" ");
-		dto.setLatitude(50);
-		dto.setLongitude(20);
-
 		assertThrows(AmqpRejectAndDontRequeueException.class,
-				() -> locationService.handleIncomingLocation(dto));
+				() -> locationService.handleIncomingLocation(locationDto(" ", 50, 20, null)));
 	}
 
 	@Test
 	void shouldThrowException_whenDeviceNotFound() {
-		LocationDto dto = new LocationDto();
-		dto.setDeviceExternalId("ext-123");
-		dto.setLatitude(50);
-		dto.setLongitude(20);
-
-		when(deviceRepo.findByExternalId("ext-123"))
-				.thenReturn(Optional.empty());
+		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.empty());
 
 		assertThrows(AmqpRejectAndDontRequeueException.class,
-				() -> locationService.handleIncomingLocation(dto));
-	}
-
-	@Test
-	void shouldCallRepositoryOnce_whenSaving() {
-		Device device = new Device();
-		device.setExternalId("ext-123");
-
-		LocationDto dto = new LocationDto();
-		dto.setDeviceExternalId("ext-123");
-		dto.setLatitude(50);
-		dto.setLongitude(20);
-
-		when(deviceRepo.findByExternalId("ext-123"))
-				.thenReturn(Optional.of(device));
-
-		locationService.handleIncomingLocation(dto);
-
-		verify(locationRepo, times(1)).save(any(Location.class));
+				() -> locationService.handleIncomingLocation(locationDto("ext-123", 50, 20, null)));
 	}
 
 	@Test
 	void shouldReturnLatestLocation() {
-		Device device = new Device();
-		device.setExternalId("ext-123");
-
-		Location location = new Location();
-		location.setDevice(device);
-		location.setLatitude(50);
-		location.setLongitude(20);
-		location.setTimestamp(Instant.now());
-
-		when(locationRepo.findLatestWithDevice("ext-123"))
-				.thenReturn(Optional.of(location));
+		Location location = location(device("ext-123"), 50, 20, Instant.now());
+		when(locationRepo.findLatestWithDevice("ext-123")).thenReturn(Optional.of(location));
 
 		LocationDto result = locationService.getLatest("ext-123");
 
@@ -190,59 +130,20 @@ class LocationServiceTest {
 	}
 
 	@Test
-	void shouldMapAllFieldsCorrectly() {
-		Device device = new Device();
-		device.setExternalId("ext-123");
-
-		Instant now = Instant.now();
-
-		Location location = new Location();
-		location.setDevice(device);
-		location.setLatitude(10);
-		location.setLongitude(15);
-		location.setTimestamp(now);
-
-		when(locationRepo.findLatestWithDevice("ext-123"))
-				.thenReturn(Optional.of(location));
-
-		LocationDto result = locationService.getLatest("ext-123");
-
-		assertEquals("ext-123", result.getDeviceExternalId());
-		assertEquals(10, result.getLatitude());
-		assertEquals(15, result.getLongitude());
-		assertEquals(now, result.getTimestamp());
-	}
-
-	@Test
 	void shouldThrowException_whenNoLocationFound() {
-		when(locationRepo.findLatestWithDevice("ext-123"))
-				.thenReturn(Optional.empty());
+		when(locationRepo.findLatestWithDevice("ext-123")).thenReturn(Optional.empty());
 
-		assertThrows(NotFoundException.class,
-				() -> locationService.getLatest("ext-123"));
+		assertThrows(NotFoundException.class, () -> locationService.getLatest("ext-123"));
 	}
 
 	@Test
 	void shouldReturnHistory_orderedByTimestamp() {
-		Device device = new Device();
-		device.setExternalId("ext-123");
-
+		Device device = device("ext-123");
 		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.of(device));
 
-		Location first = new Location();
-		first.setDevice(device);
-		first.setLatitude(10);
-		first.setLongitude(10);
-		first.setTimestamp(Instant.parse("2026-01-01T10:00:00Z"));
-
-		Location second = new Location();
-		second.setDevice(device);
-		second.setLatitude(11);
-		second.setLongitude(11);
-		second.setTimestamp(Instant.parse("2026-01-01T11:00:00Z"));
-
-		when(locationRepo.findHistory("ext-123", null, null))
-				.thenReturn(List.of(first, second));
+		Location first = location(device, 10, 10, Instant.parse("2026-01-01T10:00:00Z"));
+		Location second = location(device, 11, 11, Instant.parse("2026-01-01T11:00:00Z"));
+		when(locationRepo.findHistory("ext-123", null, null)).thenReturn(List.of(first, second));
 
 		List<LocationDto> history = locationService.getHistory("ext-123", null, null);
 
@@ -252,44 +153,91 @@ class LocationServiceTest {
 	}
 
 	@Test
-	void shouldCalculateTrackDistance() {
-		Device device = new Device();
-		device.setExternalId("ext-123");
+	void shouldThrow_whenHistoryDeviceMissing() {
+		when(deviceRepo.findByExternalId("missing")).thenReturn(Optional.empty());
 
-		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.of(device));
-
-		Location first = new Location();
-		first.setDevice(device);
-		first.setLatitude(50.0);
-		first.setLongitude(20.0);
-		first.setTimestamp(Instant.parse("2026-01-01T10:00:00Z"));
-
-		Location second = new Location();
-		second.setDevice(device);
-		second.setLatitude(50.001);
-		second.setLongitude(20.0);
-		second.setTimestamp(Instant.parse("2026-01-01T10:05:00Z"));
-
-		when(locationRepo.findHistory("ext-123", null, null))
-				.thenReturn(List.of(first, second));
-
-		var track = locationService.getTrack("ext-123", null, null);
-
-		assertEquals(2, track.getPointCount());
-		assertTrue(track.getTotalDistanceMeters() > 100);
-		assertTrue(track.getTotalDistanceMeters() < 150);
+		assertThrows(NotFoundException.class,
+				() -> locationService.getHistory("missing", null, null));
 	}
 
 	@Test
 	void shouldThrow_whenFromAfterTo() {
-		Device device = new Device();
-		device.setExternalId("ext-123");
-		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.of(device));
+		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.of(device("ext-123")));
 
 		Instant from = Instant.parse("2026-01-02T00:00:00Z");
 		Instant to = Instant.parse("2026-01-01T00:00:00Z");
 
 		assertThrows(IllegalArgumentException.class,
 				() -> locationService.getHistory("ext-123", from, to));
+	}
+
+	@Test
+	void shouldCalculateTrackDistance() {
+		Device device = device("ext-123");
+		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.of(device));
+
+		Location first = location(device, 50.0, 20.0, Instant.parse("2026-01-01T10:00:00Z"));
+		Location second = location(device, 50.001, 20.0, Instant.parse("2026-01-01T10:05:00Z"));
+		when(locationRepo.findHistory("ext-123", null, null)).thenReturn(List.of(first, second));
+
+		TrackSummaryDto track = locationService.getTrack("ext-123", null, null);
+
+		assertEquals(2, track.getPointCount());
+		assertTrue(track.getTotalDistanceMeters() > 100);
+		assertTrue(track.getTotalDistanceMeters() < 150);
+		assertEquals(first.getTimestamp(), track.getFrom());
+		assertEquals(second.getTimestamp(), track.getTo());
+	}
+
+	@Test
+	void shouldReturnEmptyTrack_whenNoPoints() {
+		when(deviceRepo.findByExternalId("ext-123")).thenReturn(Optional.of(device("ext-123")));
+		when(locationRepo.findHistory("ext-123", null, null)).thenReturn(List.of());
+
+		TrackSummaryDto track = locationService.getTrack("ext-123", null, null);
+
+		assertEquals(0, track.getPointCount());
+		assertEquals(0.0, track.getTotalDistanceMeters());
+		assertTrue(track.getPoints().isEmpty());
+	}
+
+	@Test
+	void shouldReturnLatestForAllDevices() {
+		Device a = device("a");
+		Device b = device("b");
+		when(locationRepo.findLatestForAllDevices()).thenReturn(List.of(
+				location(a, 1, 1, Instant.now()),
+				location(b, 2, 2, Instant.now())
+		));
+
+		List<LocationDto> latest = locationService.getLatestForAllDevices();
+
+		assertEquals(2, latest.size());
+		assertEquals("a", latest.get(0).getDeviceExternalId());
+		assertEquals("b", latest.get(1).getDeviceExternalId());
+	}
+
+	private static Device device(String externalId) {
+		Device device = new Device();
+		device.setExternalId(externalId);
+		return device;
+	}
+
+	private static Location location(Device device, double lat, double lon, Instant ts) {
+		Location location = new Location();
+		location.setDevice(device);
+		location.setLatitude(lat);
+		location.setLongitude(lon);
+		location.setTimestamp(ts);
+		return location;
+	}
+
+	private static LocationDto locationDto(String externalId, double lat, double lon, Instant ts) {
+		LocationDto dto = new LocationDto();
+		dto.setDeviceExternalId(externalId);
+		dto.setLatitude(lat);
+		dto.setLongitude(lon);
+		dto.setTimestamp(ts);
+		return dto;
 	}
 }

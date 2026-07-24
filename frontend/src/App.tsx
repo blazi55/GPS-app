@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from './api/client'
 import { DeviceForm } from './components/DeviceForm'
 import { DeviceList } from './components/DeviceList'
+import { LanguageSwitch } from './components/LanguageSwitch'
 import { MapView } from './components/MapView'
 import { SimulateLocationForm } from './components/SimulateLocationForm'
 import { TrackInfo } from './components/TrackInfo'
+import { useI18n } from './i18n/I18nProvider'
 import './lib/leafletSetup'
 import type {
   Device,
@@ -16,6 +18,7 @@ import type {
 const POLL_MS = 5000
 
 export default function App() {
+  const { t, format } = useI18n()
   const [devices, setDevices] = useState<Device[]>([])
   const [latest, setLatest] = useState<LocationPoint[]>([])
   const [selectedExternalId, setSelectedExternalId] = useState<string | null>(
@@ -37,9 +40,9 @@ export default function App() {
       setLatest(latestList)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Błąd połączenia z API')
+      setError(err instanceof Error ? err.message : t.errors.connection)
     }
-  }, [])
+  }, [t.errors.connection])
 
   useEffect(() => {
     void refresh()
@@ -59,12 +62,11 @@ export default function App() {
     setBusyDevice(true)
     try {
       await api.sendDevice(payload)
-      // RabbitMQ is async — short delay then refresh
       await new Promise((r) => setTimeout(r, 800))
       await refresh()
       setSelectedExternalId(payload.externalId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nie udało się dodać urządzenia')
+      setError(err instanceof Error ? err.message : t.errors.addDevice)
     } finally {
       setBusyDevice(false)
     }
@@ -77,7 +79,7 @@ export default function App() {
       await new Promise((r) => setTimeout(r, 800))
       await refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nie udało się wysłać lokalizacji')
+      setError(err instanceof Error ? err.message : t.errors.sendLocation)
     } finally {
       setBusyLocation(false)
     }
@@ -91,7 +93,7 @@ export default function App() {
       setTrack(summary)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nie udało się pobrać trasy')
+      setError(err instanceof Error ? err.message : t.errors.loadTrack)
     } finally {
       setBusyTrack(false)
     }
@@ -106,14 +108,17 @@ export default function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <header className="brand">
-          <p className="brand__mark">GPS Track</p>
-          <p className="brand__tag">Monitoring floty w czasie rzeczywistym</p>
+          <div className="brand__row">
+            <p className="brand__mark">{t.brand.name}</p>
+            <LanguageSwitch />
+          </div>
+          <p className="brand__tag">{t.brand.tagline}</p>
         </header>
 
         {error && <div className="banner error">{error}</div>}
 
         <section className="panel">
-          <h2>Urządzenia</h2>
+          <h2>{t.sections.devices}</h2>
           <DeviceList
             devices={devices}
             selectedExternalId={selectedExternalId}
@@ -123,7 +128,7 @@ export default function App() {
         </section>
 
         <section className="panel">
-          <h2>Trasa</h2>
+          <h2>{t.sections.track}</h2>
           <TrackInfo
             track={track}
             loading={busyTrack}
@@ -134,12 +139,12 @@ export default function App() {
         </section>
 
         <section className="panel">
-          <h2>Nowe urządzenie</h2>
+          <h2>{t.sections.newDevice}</h2>
           <DeviceForm onSubmit={handleAddDevice} busy={busyDevice} />
         </section>
 
         <section className="panel">
-          <h2>Symulacja GPS</h2>
+          <h2>{t.sections.simulateGps}</h2>
           <SimulateLocationForm
             externalId={selectedExternalId}
             onSubmit={handleSendLocation}
@@ -157,7 +162,10 @@ export default function App() {
         />
         <div className="map-hud">
           <span className="mono">
-            {latest.length} aktywnych · odświeżanie co {POLL_MS / 1000}s
+            {format(t.hud.activeRefresh, {
+              count: latest.length,
+              seconds: POLL_MS / 1000,
+            })}
           </span>
         </div>
       </main>

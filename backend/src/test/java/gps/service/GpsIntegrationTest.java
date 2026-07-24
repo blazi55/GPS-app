@@ -253,4 +253,75 @@ class GpsIntegrationTest {
 		var latest = locationService.getLatestForAllDevices();
 		assertEquals(2, latest.size());
 	}
+
+	@Test
+	void shouldGetDeviceByExternalId() {
+		DeviceDto dto = new DeviceDto();
+		dto.setName("Tablet");
+		dto.setExternalId("tab-1");
+		dto.setDeviceType(DeviceType.TABLET);
+		deviceService.handleIncomingDevice(dto);
+
+		var found = deviceService.getDeviceByExternalId("tab-1");
+		assertEquals("Tablet", found.getName());
+		assertEquals(DeviceType.TABLET, found.getDeviceType());
+	}
+
+	@Test
+	void shouldRejectInvalidLongitude() {
+		DeviceDto deviceDto = new DeviceDto();
+		deviceDto.setName("Device A");
+		deviceDto.setExternalId("ext-lon");
+		deviceService.handleIncomingDevice(deviceDto);
+
+		LocationDto dto = new LocationDto();
+		dto.setDeviceExternalId("ext-lon");
+		dto.setLatitude(50);
+		dto.setLongitude(200);
+
+		assertThrows(AmqpRejectAndDontRequeueException.class,
+				() -> locationService.handleIncomingLocation(dto));
+	}
+
+	@Test
+	void shouldReturnEmptyHistory_whenDeviceHasNoPoints() {
+		DeviceDto deviceDto = new DeviceDto();
+		deviceDto.setName("Empty");
+		deviceDto.setExternalId("empty-1");
+		deviceService.handleIncomingDevice(deviceDto);
+
+		assertTrue(locationService.getHistory("empty-1", null, null).isEmpty());
+		assertEquals(0, locationService.getTrack("empty-1", null, null).getPointCount());
+	}
+
+	@Test
+	void shouldFilterHistoryByToTimestamp() {
+		DeviceDto deviceDto = new DeviceDto();
+		deviceDto.setName("Filter");
+		deviceDto.setExternalId("filter-1");
+		deviceService.handleIncomingDevice(deviceDto);
+
+		LocationDto p1 = new LocationDto();
+		p1.setDeviceExternalId("filter-1");
+		p1.setLatitude(1);
+		p1.setLongitude(1);
+		p1.setTimestamp(Instant.parse("2026-01-01T10:00:00Z"));
+
+		LocationDto p2 = new LocationDto();
+		p2.setDeviceExternalId("filter-1");
+		p2.setLatitude(2);
+		p2.setLongitude(2);
+		p2.setTimestamp(Instant.parse("2026-01-01T12:00:00Z"));
+
+		locationService.handleIncomingLocation(p1);
+		locationService.handleIncomingLocation(p2);
+
+		var filtered = locationService.getHistory(
+				"filter-1",
+				null,
+				Instant.parse("2026-01-01T10:30:00Z")
+		);
+		assertEquals(1, filtered.size());
+		assertEquals(1, filtered.get(0).getLatitude());
+	}
 }

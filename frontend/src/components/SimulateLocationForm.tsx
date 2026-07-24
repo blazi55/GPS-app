@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useI18n } from '../i18n/I18nProvider'
 import type { LocationPoint } from '../types/gps'
 
 interface SimulateLocationFormProps {
@@ -12,6 +13,7 @@ export function SimulateLocationForm({
   onSubmit,
   busy,
 }: SimulateLocationFormProps) {
+  const { t, format } = useI18n()
   const [latitude, setLatitude] = useState('52.2297')
   const [longitude, setLongitude] = useState('21.0122')
 
@@ -31,11 +33,11 @@ export function SimulateLocationForm({
     <form className="stack-form" onSubmit={handleSubmit}>
       <p className="muted small">
         {externalId
-          ? `Symulacja pozycji dla ${externalId}`
-          : 'Wybierz urządzenie, żeby wysłać punkt GPS'}
+          ? format(t.simulate.selected, { id: externalId })
+          : t.simulate.pickDevice}
       </p>
       <label>
-        Szerokość
+        {t.simulate.latitude}
         <input
           className="mono"
           value={latitude}
@@ -45,7 +47,7 @@ export function SimulateLocationForm({
         />
       </label>
       <label>
-        Długość
+        {t.simulate.longitude}
         <input
           className="mono"
           value={longitude}
@@ -55,7 +57,7 @@ export function SimulateLocationForm({
         />
       </label>
       <button type="submit" disabled={!externalId || busy}>
-        {busy ? 'Wysyłanie…' : 'Wyślij lokalizację'}
+        {busy ? t.simulate.submitting : t.simulate.submit}
       </button>
     </form>
   )

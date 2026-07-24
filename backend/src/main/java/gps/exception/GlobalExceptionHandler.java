@@ -1,6 +1,9 @@
 package gps.exception;
 
 import gps.dto.ErrorResponse;
+import gps.i18n.MessageKeys;
+import gps.i18n.MessageService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +14,10 @@ import java.time.Instant;
 
 @Slf4j
 @ControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+	private final MessageService messages;
 
 	@ExceptionHandler(NotFoundException.class)
 	public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex) {
@@ -55,7 +61,7 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse(
 						Instant.now(),
 						HttpStatus.INTERNAL_SERVER_ERROR.value(),
-						"Unexpected error"
+						messages.get(MessageKeys.UNEXPECTED)
 				));
 	}
 
@@ -68,7 +74,7 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse(
 						Instant.now(),
 						HttpStatus.INTERNAL_SERVER_ERROR.value(),
-						"Something went wrong"
+						messages.get(MessageKeys.UNHANDLED)
 				));
 	}
 }

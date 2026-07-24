@@ -73,11 +73,42 @@ select {
   border-right: 1px solid var(--panel-edge);
 }
 
+.brand__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .brand__mark {
   margin: 0;
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.03em;
+}
+
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--panel-edge);
+  border-radius: 999px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.lang-switch__btn {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.lang-switch__btn.active {
+  background: var(--accent);
+  color: #fff;
 }
 
 .brand__tag {

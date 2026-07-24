@@ -1,9 +1,11 @@
 package gps.service;
 
-import gps.dto.SendDeviceDto;
 import gps.dto.DeviceDto;
+import gps.dto.SendDeviceDto;
 import gps.entity.Device;
 import gps.exception.NotFoundException;
+import gps.i18n.MessageKeys;
+import gps.i18n.MessageService;
 import gps.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,13 +21,14 @@ import java.util.List;
 public class DeviceService {
 
 	private final DeviceRepository deviceRepository;
+	private final MessageService messages;
 
 	public DeviceDto getDevice(final Long id) {
 		return deviceRepository.findById(id)
 				.map(this::mapToDto)
 				.orElseThrow(() -> {
 					log.error("Device not found for id: {}", id);
-					return new NotFoundException("Device not found for id: " + id);
+					return new NotFoundException(messages.get(MessageKeys.DEVICE_NOT_FOUND_ID, id));
 				});
 	}
 
@@ -34,7 +37,9 @@ public class DeviceService {
 				.map(this::mapToDto)
 				.orElseThrow(() -> {
 					log.error("Device not found for externalId: {}", externalId);
-					return new NotFoundException("Device not found for externalId: " + externalId);
+					return new NotFoundException(
+							messages.get(MessageKeys.DEVICE_NOT_FOUND_EXTERNAL_ID, externalId)
+					);
 				});
 	}
 
@@ -42,12 +47,16 @@ public class DeviceService {
 	public void handleIncomingDevice(final DeviceDto dto) {
 		if (dto.getExternalId() == null || dto.getExternalId().isBlank()) {
 			log.error("ExternalId is required");
-			throw new AmqpRejectAndDontRequeueException("ExternalId is required");
+			throw new AmqpRejectAndDontRequeueException(
+					messages.get(MessageKeys.DEVICE_EXTERNAL_ID_REQUIRED)
+			);
 		}
 
 		if (dto.getName() == null || dto.getName().isBlank()) {
 			log.error("Device name cannot be empty");
-			throw new AmqpRejectAndDontRequeueException("Device name cannot be empty");
+			throw new AmqpRejectAndDontRequeueException(
+					messages.get(MessageKeys.DEVICE_NAME_REQUIRED)
+			);
 		}
 
 		final Device device = deviceRepository
