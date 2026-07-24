@@ -179,4 +179,78 @@ class GpsIntegrationTest {
 
 		assertNotNull(saved.getTimestamp());
 	}
+
+	@Test
+	void shouldReturnHistoryAndTrackSummary() {
+		DeviceDto deviceDto = new DeviceDto();
+		deviceDto.setName("Device A");
+		deviceDto.setExternalId("ext-track");
+		deviceDto.setDeviceType(DeviceType.CAR);
+
+		deviceService.handleIncomingDevice(deviceDto);
+
+		LocationDto p1 = new LocationDto();
+		p1.setDeviceExternalId("ext-track");
+		p1.setLatitude(50.0);
+		p1.setLongitude(20.0);
+		p1.setTimestamp(Instant.parse("2026-01-01T10:00:00Z"));
+
+		LocationDto p2 = new LocationDto();
+		p2.setDeviceExternalId("ext-track");
+		p2.setLatitude(50.01);
+		p2.setLongitude(20.0);
+		p2.setTimestamp(Instant.parse("2026-01-01T10:10:00Z"));
+
+		locationService.handleIncomingLocation(p1);
+		locationService.handleIncomingLocation(p2);
+
+		var history = locationService.getHistory("ext-track", null, null);
+		assertEquals(2, history.size());
+
+		var track = locationService.getTrack("ext-track", null, null);
+		assertEquals(2, track.getPointCount());
+		assertTrue(track.getTotalDistanceMeters() > 1000);
+
+		var filtered = locationService.getHistory(
+				"ext-track",
+				Instant.parse("2026-01-01T10:05:00Z"),
+				null
+		);
+		assertEquals(1, filtered.size());
+		assertEquals(50.01, filtered.get(0).getLatitude());
+	}
+
+	@Test
+	void shouldReturnLatestForAllDevices() {
+		DeviceDto a = new DeviceDto();
+		a.setName("A");
+		a.setExternalId("dev-a");
+		a.setDeviceType(DeviceType.PHONE);
+
+		DeviceDto b = new DeviceDto();
+		b.setName("B");
+		b.setExternalId("dev-b");
+		b.setDeviceType(DeviceType.WATCH);
+
+		deviceService.handleIncomingDevice(a);
+		deviceService.handleIncomingDevice(b);
+
+		LocationDto locA = new LocationDto();
+		locA.setDeviceExternalId("dev-a");
+		locA.setLatitude(1);
+		locA.setLongitude(1);
+		locA.setTimestamp(Instant.now());
+
+		LocationDto locB = new LocationDto();
+		locB.setDeviceExternalId("dev-b");
+		locB.setLatitude(2);
+		locB.setLongitude(2);
+		locB.setTimestamp(Instant.now());
+
+		locationService.handleIncomingLocation(locA);
+		locationService.handleIncomingLocation(locB);
+
+		var latest = locationService.getLatestForAllDevices();
+		assertEquals(2, latest.size());
+	}
 }

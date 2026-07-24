@@ -1,7 +1,8 @@
 package gps.exception;
 
 public class NotFoundException extends RuntimeException {
-	public NotFoundException(String externalId) {
-		super("No object found for device: " + externalId);
+
+	public NotFoundException(String message) {
+		super(message);
 	}
 }

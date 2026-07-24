@@ -1,11 +1,13 @@
 package gps.service;
 
 import gps.dto.LocationDto;
+import gps.dto.TrackSummaryDto;
 import gps.entity.Device;
 import gps.entity.Location;
 import gps.exception.NotFoundException;
 import gps.repository.DeviceRepository;
 import gps.repository.LocationRepository;
+import gps.util.GeoUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,8 @@ import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -24,13 +28,13 @@ public class LocationService {
 
 	@Transactional
 	public void handleIncomingLocation(final LocationDto dto) {
-		if (dto.getLatitude() < -90 || dto.getLatitude() > 90) {
-			log.error("Invalid latitude");
+		if (!GeoUtils.isValidLatitude(dto.getLatitude())) {
+			log.error("Invalid latitude: {}", dto.getLatitude());
 			throw new AmqpRejectAndDontRequeueException("Invalid latitude");
 		}
 
-		if (dto.getLongitude() < -180 || dto.getLongitude() > 180) {
-			log.error("Invalid longitude");
+		if (!GeoUtils.isValidLongitude(dto.getLongitude())) {
+			log.error("Invalid longitude: {}", dto.getLongitude());
 			throw new AmqpRejectAndDontRequeueException("Invalid longitude");
 		}
 
@@ -43,7 +47,7 @@ public class LocationService {
 				.findByExternalId(dto.getDeviceExternalId())
 				.orElseThrow(() -> {
 					log.error("Device not found for externalId: {}", dto.getDeviceExternalId());
-					throw new AmqpRejectAndDontRequeueException(
+					return new AmqpRejectAndDontRequeueException(
 							"Device not found for externalId: " + dto.getDeviceExternalId()
 					);
 				});
@@ -61,10 +65,60 @@ public class LocationService {
 
 	public LocationDto getLatest(String externalId) {
 		return locationRepo.findLatestWithDevice(externalId)
-				.stream()
-				.findFirst()
 				.map(this::mapToDto)
-				.orElseThrow(() -> new NotFoundException(externalId));
+				.orElseThrow(() -> new NotFoundException(
+						"No location found for device: " + externalId
+				));
+	}
+
+	public List<LocationDto> getHistory(String externalId, Instant from, Instant to) {
+		ensureDeviceExists(externalId);
+
+		if (from != null && to != null && from.isAfter(to)) {
+			throw new IllegalArgumentException("'from' must be before or equal to 'to'");
+		}
+
+		return locationRepo.findHistory(externalId, from, to)
+				.stream()
+				.map(this::mapToDto)
+				.toList();
+	}
+
+	public TrackSummaryDto getTrack(String externalId, Instant from, Instant to) {
+		List<LocationDto> points = getHistory(externalId, from, to);
+
+		double totalDistance = 0;
+		for (int i = 1; i < points.size(); i++) {
+			LocationDto prev = points.get(i - 1);
+			LocationDto curr = points.get(i);
+			totalDistance += GeoUtils.distanceMeters(
+					prev.getLatitude(), prev.getLongitude(),
+					curr.getLatitude(), curr.getLongitude()
+			);
+		}
+
+		TrackSummaryDto summary = new TrackSummaryDto();
+		summary.setDeviceExternalId(externalId);
+		summary.setPointCount(points.size());
+		summary.setTotalDistanceMeters(totalDistance);
+		summary.setFrom(points.isEmpty() ? from : points.get(0).getTimestamp());
+		summary.setTo(points.isEmpty() ? to : points.get(points.size() - 1).getTimestamp());
+		summary.setPoints(new ArrayList<>(points));
+		return summary;
+	}
+
+	public List<LocationDto> getLatestForAllDevices() {
+		return locationRepo.findLatestForAllDevices()
+				.stream()
+				.map(this::mapToDto)
+				.toList();
+	}
+
+	private void ensureDeviceExists(String externalId) {
+		deviceRepo.findByExternalId(externalId)
+				.orElseThrow(() -> new NotFoundException(
+						"Device not found for externalId: " + externalId
+				));
 	}
 
 	private LocationDto mapToDto(final Location location) {

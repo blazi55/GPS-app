@@ -25,7 +25,16 @@ public class DeviceService {
 				.map(this::mapToDto)
 				.orElseThrow(() -> {
 					log.error("Device not found for id: {}", id);
-					throw new NotFoundException("Device not found for id: " + id);
+					return new NotFoundException("Device not found for id: " + id);
+				});
+	}
+
+	public DeviceDto getDeviceByExternalId(final String externalId) {
+		return deviceRepository.findByExternalId(externalId)
+				.map(this::mapToDto)
+				.orElseThrow(() -> {
+					log.error("Device not found for externalId: {}", externalId);
+					return new NotFoundException("Device not found for externalId: " + externalId);
 				});
 	}
 

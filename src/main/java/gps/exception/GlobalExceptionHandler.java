@@ -1,6 +1,5 @@
 package gps.exception;
 
-
 import gps.dto.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,6 +12,17 @@ import java.time.Instant;
 @Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+	@ExceptionHandler(NotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex) {
+		return ResponseEntity
+				.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse(
+						Instant.now(),
+						HttpStatus.NOT_FOUND.value(),
+						ex.getMessage()
+				));
+	}
 
 	@ExceptionHandler(IllegalArgumentException.class)
 	public ResponseEntity<ErrorResponse> handleBadRequest(IllegalArgumentException ex) {
@@ -59,17 +69,6 @@ public class GlobalExceptionHandler {
 						Instant.now(),
 						HttpStatus.INTERNAL_SERVER_ERROR.value(),
 						"Something went wrong"
-				));
-	}
-
-	@ExceptionHandler(NotFoundException.class)
-	public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex) {
-		return ResponseEntity
-				.status(HttpStatus.NOT_FOUND)
-				.body(new ErrorResponse(
-						Instant.now(),
-						HttpStatus.NOT_FOUND.value(),
-						ex.getMessage()
 				));
 	}
 }

@@ -53,8 +53,7 @@ public class RabbitConfig {
 	@Bean
 	public Jackson2JsonMessageConverter messageConverter() {
 		ObjectMapper mapper = new ObjectMapper();
-		mapper.registerModule(new JavaTimeModule()); // 🔥 TO!
-
+		mapper.registerModule(new JavaTimeModule());
 		return new Jackson2JsonMessageConverter(mapper);
 	}
 }
