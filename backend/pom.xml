@@ -11,8 +11,8 @@
     <groupId>com.gps</groupId>
     <artifactId>gps</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name/>
-    <description/>
+    <name>gps-backend</name>
+    <description>GPS tracking API (Spring Boot + RabbitMQ + MySQL)</description>
     <url/>
     <licenses>
         <license/>
